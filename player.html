@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HLS Screen Stream</title>
+  <style>
+    body { font-family: system-ui; padding: 16px; }
+    video { width: 100%; max-width: 900px; border: 1px solid #ccc; border-radius: 10px; }
+  </style>
+</head>
+<body>
+<h2>Live Screen (HLS)</h2>
+<video id="vid" autoplay playsinline muted src="/hls/stream.m3u8"></video>
+<p>If it doesn’t auto-play, tap play.</p>
+<button onclick="(()=>{
+  document.getElementById('vid').play();
+})()" style="width: 100px; height:50px;">Play</button>
+</body>
+</html>
