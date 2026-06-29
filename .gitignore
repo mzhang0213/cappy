@@ -1,6 +1,22 @@
+# Editors / IDE
 .idea
-hls
 screencap_py.iml
 
+# Project-specific
+hls
 startup-guide.md
 cf_token.txt
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+*.log
+
+# macOS
+.DS_Store
