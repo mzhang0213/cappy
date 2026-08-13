@@ -201,14 +201,14 @@ function App() {
             </label>
           )}
 
-          <label className="toggle">
-            <input
-              type="checkbox"
-              checked={showDecor}
-              onChange={(e) => setShowDecor(e.target.checked)}
-            />{' '}
-            Show Mario/Cappy
-          </label>
+          {/*<label className="toggle">*/}
+          {/*  <input*/}
+          {/*    type="checkbox"*/}
+          {/*    checked={showDecor}*/}
+          {/*    onChange={(e) => setShowDecor(e.target.checked)}*/}
+          {/*  />{' '}*/}
+          {/*  Show Mario/Cappy*/}
+          {/*</label>*/}
         </div>
 
         <div className="buttons">

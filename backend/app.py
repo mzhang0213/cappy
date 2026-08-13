@@ -117,8 +117,9 @@ def start_video(request: VideoStartRequest):
   -f avfoundation -framerate 30 -i "{str(request.device_ids[0])}:none" \
   -fflags +genpts -use_wallclock_as_timestamps 1 \
   -fps_mode cfr -r 30 \
-  -vf "scale=1280:-2,format=yuv420p" \
+  -vf "scale=2560:-2,format=yuv420p" \
   -c:v libx264 -preset veryfast -tune zerolatency \
+  -b:v 8M -maxrate 10M -bufsize 16M \
   -g 60 -keyint_min 60 -sc_threshold 0 \
   -f hls -hls_time 2 -hls_list_size 10 \
   -hls_flags delete_segments+append_list+omit_endlist \
@@ -132,12 +133,13 @@ def start_video(request: VideoStartRequest):
   -fflags +genpts -use_wallclock_as_timestamps 1 \
   -fps_mode cfr -r 15 \
   -filter_complex "\
-    [0:v]fps=15,scale=1280:-2,format=yuv420p[screen]; \
-    [1:v]fps=15,scale=320:-2,format=yuv420p[cam]; \
-    [screen][cam]overlay=W-w-20:H-h-20[out] \
+    [0:v]fps=15,scale=2560:-2,format=yuv420p[screen]; \
+    [1:v]fps=15,scale=512:-2,format=yuv420p[cam]; \
+    [screen][cam]overlay=W-w-40:H-h-40[out] \
   " \
   -map "[out]" \
   -c:v libx264 -preset veryfast -tune zerolatency \
+  -b:v 8M -maxrate 10M -bufsize 16M \
   -g 30 -keyint_min 30 -sc_threshold 0 \
   -f hls -hls_time 2 -hls_list_size 10 \
   -hls_flags delete_segments+append_list+omit_endlist \
