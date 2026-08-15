@@ -1,9 +1,10 @@
 import re
+import asyncio
 import subprocess
 from typing import List
 import shlex
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -164,6 +165,65 @@ def start_video(request: VideoStartRequest):
             "device_ids": request.device_ids
         }
     }
+
+@app.websocket("/ws_host")
+async def ws_host(ws: WebSocket):
+    """Receive a browser screenshare (WebM chunks over WebSocket) and pipe it
+    into ffmpeg, transcoding to the same HLS output the viewer already reads.
+
+    Reached from the frontend as /server/ws_host (nginx/vite strip /server).
+    """
+    await ws.accept()
+
+    # One broadcast at a time: drop any existing ffmpeg + stale playlist,
+    # exactly like start_video does.
+    terminate_existing_ffmpeg_processes()
+    for f in HLS_DIR.glob("*.ts"):
+        f.unlink(missing_ok=True)
+    (HLS_DIR / "stream.m3u8").unlink(missing_ok=True)
+
+    playlist = str(HLS_DIR / "stream.m3u8")
+    segments = str(HLS_DIR / "seg_%05d.ts")
+
+    # Piped WebM (VP8/VP9 + Opus) -> HLS (H264 + AAC). Video MUST be
+    # re-encoded (VP8/VP9 can't go in MPEG-TS). -map 0:a:0? makes audio
+    # optional so it still works if the share has no audio track.
+    # Cap the encode cost: downscale to at most 1600px wide (never upscale),
+    # resample to 30 fps, modest bitrate. Re-encoding a full Retina
+    # screenshare at native resolution is what pegs the CPU while hosting.
+    cmd = [
+        "ffmpeg", "-hide_banner", "-loglevel", "warning",
+        "-fflags", "+genpts", "-i", "pipe:0",
+        "-map", "0:v:0", "-map", "0:a:0?",
+        "-vf", r"fps=30,scale=w=min(1600\,iw):h=-2,format=yuv420p",
+        "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+        "-b:v", "4M", "-maxrate", "5M", "-bufsize", "8M",
+        "-g", "60", "-keyint_min", "60", "-sc_threshold", "0",
+        "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
+        "-f", "hls", "-hls_time", "2", "-hls_list_size", "10",
+        "-hls_flags", "delete_segments+append_list+omit_endlist",
+        "-hls_segment_filename", segments, playlist,
+    ]
+    proc = await asyncio.create_subprocess_exec(*cmd, stdin=asyncio.subprocess.PIPE)
+    print(f"ws_host: ffmpeg started with PID {proc.pid}")
+
+    try:
+        while True:
+            chunk = await ws.receive_bytes()
+            proc.stdin.write(chunk)
+            await proc.stdin.drain()  # backpressure: wait if ffmpeg is slow
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        print(f"ws_host error: {e}")
+    finally:
+        try:
+            if proc.stdin:
+                proc.stdin.close()
+        except Exception:
+            pass
+        terminate_existing_ffmpeg_processes()
+
 
 def terminate_existing_ffmpeg_processes():
     try:

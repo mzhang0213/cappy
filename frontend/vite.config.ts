@@ -13,6 +13,7 @@ export default defineConfig({
       '/server': {
         target: 'http://localhost:3672',
         changeOrigin: true,
+        ws: true, // upgrade /server/ws_host through the dev server
         rewrite: (path) => path.replace(/^\/server/, ''),
       },
       '/hls': {
